@@ -1,9 +1,9 @@
 const functions = require('firebase-functions');
-const config = require('./util/config');
-
 const app = require('express')();
-
+const config = require('./util/config');
 const FBAuth = require('./util/FBAuth');
+
+const { db } = require('./util/admin');
 
 const { getAllScreams, postOneScream, getScream, commentOnScream, likeScream, unlikeScream, deleteScream } = require('./handlers/screams');
 const { signup, login, uploadImage, addUserDetails, getAuthenticatedUser } = require('./handlers/users');
@@ -26,3 +26,65 @@ app.post('/user', FBAuth, addUserDetails);
 app.get('/user', FBAuth, getAuthenticatedUser);
 
 exports.api = functions.https.onRequest(app);
+
+exports.createNotificationOnLike = functions.firestore.document('likes/{id}')
+  .onCreate(snapshot => {
+    db.doc(`/screams/${snapshot.data().screamId}`).get()
+      .then(doc => {
+        if (doc.exists) {
+          return db.doc(`/notifications/${snapshot.id}`).set({
+            createdAt: new Date().toISOString(),
+            recipient: doc.data().userHandle,
+            sender: snapshot.data().userHandle,
+            type: 'like',
+            read: false,
+            screamId: doc.id
+          })
+        }
+      })
+      .then(() => {
+        return;
+      })
+      .catch(error => {
+        console.error(error);
+        return;
+      });
+  })
+
+exports.createNotificationOnComment = functions.firestore.document('comments/{id}')
+  .onCreate(snapshot => {
+    db.doc(`/screams/${snapshot.data().screamId}`).get()
+      .then(doc => {
+        if (doc.exists) {
+          return db.doc(`/notifications/${snapshot.id}`).set({
+            createdAt: new Date().toISOString(),
+            recipient: doc.data().userHandle,
+            sender: snapshot.data().userHandle,
+            type: 'comment',
+            read: false,
+            screamId: doc.id
+          })
+        }
+      })
+      .then(() => {
+        return;
+      })
+      .catch(error => {
+        console.error(error);
+        return;
+      });
+  })
+
+exports.deleteNotificationOnUnLike = functions
+  .firestore.document('likes/{id}')
+  .onDelete(snapshot => {
+    db.doc(`/notifications/${snapshot.id}`)
+      .delete()
+      .then(() => {
+        return;
+      })
+      .catch(error => {
+        console.error(error);
+        return;
+      });
+  })
