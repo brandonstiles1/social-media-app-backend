@@ -27,6 +27,7 @@ module.exports = (req, res, next) => {
     })
     .then(data => {
       console.log(data);
+      // SOMETHING IS GOING WRONG RIGHT BELOW HERE 
       req.user.handle = data.docs[0].data().handle;
       req.user.imageUrl = data.docs[0].data().imageUrl;
       return next();
@@ -34,5 +35,5 @@ module.exports = (req, res, next) => {
     .catch(error => {
       console.error('Error while verifying token', error);
       return res.status(403).json(error);
-    })
+    });
 };

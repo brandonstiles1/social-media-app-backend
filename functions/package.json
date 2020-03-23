@@ -21,5 +21,9 @@
   "devDependencies": {
     "firebase-functions-test": "^0.1.6"
   },
-  "private": true
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "",
+  "license": "ISC"
 }
