@@ -1,15 +1,16 @@
 const functions = require( 'firebase-functions' );
 const app = require( 'express' )();
-const config = require( './util/config' );
+// const config = require( './util/config' );
 const FBAuth = require( './util/FBAuth' );
+
+const cors = require( 'cors' );
+app.use( cors() );
 
 const { db } = require( './util/admin' );
 
 const { getAllScreams, postOneScream, getScream, commentOnScream, likeScream, unlikeScream, deleteScream } = require( './handlers/screams' );
-const { signup, login, uploadImage, addUserDetails, getAuthenticatedUser } = require( './handlers/users' );
+const { signup, login, uploadImage, addUserDetails, getAuthenticatedUser, getUserDetails, markNotificationsRead } = require( './handlers/users' );
 
-const cors = require( 'cors' );
-app.use( cors() );
 
 // SCREAM ROUTES
 app.get( '/screams', getAllScreams ); // Get all screams
@@ -27,11 +28,14 @@ app.post( '/login', login ); // Login to app
 app.post( '/user/image', FBAuth, uploadImage );
 app.post( '/user', FBAuth, addUserDetails );
 app.get( '/user', FBAuth, getAuthenticatedUser );
+app.get( '/notifications', FBAuth, markNotificationsRead );
+app.get( '/user/:handle', FBAuth, getUserDetails );
+
 
 exports.api = functions.https.onRequest( app );
 
-exports.createNotificationOnLike = functions.firestore
-  .document( 'likes/{id}' )
+// Functions
+exports.createNotificationOnLike = functions.firestore.document( 'likes/{id}' )
   .onCreate( snapshot => {
     return db.doc( `/screams/${snapshot.data().screamId}` ).get()
       .then( doc => {
@@ -51,8 +55,7 @@ exports.createNotificationOnLike = functions.firestore
       } );
   } );
 
-exports.createNotificationOnComment = functions.firestore
-  .document( 'comments/{id}' )
+exports.createNotificationOnComment = functions.firestore.document( 'comments/{id}' )
   .onCreate( snapshot => {
     return db.doc( `/screams/${snapshot.data().screamId}` ).get()
       .then( doc => {
@@ -73,8 +76,7 @@ exports.createNotificationOnComment = functions.firestore
       } );
   } );
 
-exports.deleteNotificationOnUnLike = functions.firestore
-  .document( 'likes/{id}' )
+exports.deleteNotificationOnUnLike = functions.firestore.document( 'likes/{id}' )
   .onDelete( snapshot => {
     return db.doc( `/notifications/${snapshot.id}` )
       .delete()
@@ -117,7 +119,7 @@ exports.onScreamDelete = functions.firestore.document( 'screams/{screamId}' )
       .then( data => {
         data.forEach( doc => {
           batch.delete( db.doc( `/comments./${doc.id}` ) );
-        } )
+        } );
         return db.collection( 'likes' ).where( 'screamId', '==', screamId ).get();
       } )
       .then( data => {
@@ -129,7 +131,7 @@ exports.onScreamDelete = functions.firestore.document( 'screams/{screamId}' )
       .then( data => {
         data.forEach( doc => {
           batch.delete( db.doc( `/notifications./${doc.id}` ) );
-        } )
+        } );
         return batch.commit();
       } )
       .catch( error => console.error( error ) );
